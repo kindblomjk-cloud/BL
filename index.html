@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#f7f4ee">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="BladderLog">
+<title>BladderLog</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💧</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f7f4ee;--surface:#fff;--border:#e0dbd0;--border2:#ccc8bc;
+  --text:#1a1814;--muted:#888070;--accent:#3d6b8c;--accent2:#7ab3d4;
+  --warm:#c97a3a;--good:#4a8c6b;--bad:#c04a3a;--night:#5a5080;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{background:var(--bg);color:var(--text);font-family:'Fraunces',serif;padding:1.5rem 1rem 5rem;}
+.wrap{max-width:580px;margin:0 auto;}
+.app-label{font-family:'DM Mono',monospace;font-size:.62rem;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;margin-bottom:1.5rem;}
+
+/* ── Card ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:1.5rem;margin-bottom:1rem;position:relative;overflow:hidden;}
+.card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:transparent;transform:scaleX(0);transform-origin:left;transition:transform .3s,background .3s;}
+.card.bar-accent::after{background:var(--accent);transform:scaleX(1);}
+.card.bar-warm::after{background:var(--warm);transform:scaleX(1);}
+
+/* ── Big display ── */
+.big{font-family:'DM Mono',monospace;font-size:clamp(3rem,12vw,5.5rem);font-weight:400;letter-spacing:-.02em;line-height:1;margin-bottom:.3rem;transition:color .2s;}
+.big.c-warm{color:var(--warm);}
+.big.c-accent{color:var(--accent);}
+.sub{font-family:'DM Mono',monospace;font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:1.1rem;}
+
+/* ── Hint ── */
+.hint{font-size:.92rem;font-style:italic;color:var(--muted);margin-bottom:1.2rem;line-height:1.5;min-height:1.2em;}
+.hint strong{font-style:normal;}
+.hint-sub{display:block;font-size:.75rem;margin-top:.2rem;font-style:normal;}
+
+/* ── Countdown ring ── */
+.cd-row{display:flex;align-items:center;gap:.8rem;margin-bottom:.8rem;}
+.cd-svg{transform:rotate(-90deg);}
+.cd-bg{fill:none;stroke:var(--border);stroke-width:4;}
+.cd-arc{fill:none;stroke:var(--accent);stroke-width:4;stroke-linecap:round;stroke-dasharray:113.1;stroke-dashoffset:0;transition:stroke-dashoffset .85s linear;}
+.cd-txt{font-family:'DM Mono',monospace;font-size:.7rem;color:var(--accent);}
+
+/* ── Buttons ── */
+.row{display:flex;gap:.6rem;flex-wrap:wrap;}
+.btn{font-family:'Fraunces',serif;font-weight:600;border:1px solid transparent;border-radius:3px;padding:.75rem 1.4rem;cursor:pointer;font-size:.9rem;touch-action:manipulation;transition:opacity .15s;}
+.btn:active{opacity:.75;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-stop{background:var(--warm);color:#fff;}
+.btn-ghost{background:transparent;color:var(--muted);border-color:var(--border2);font-size:.8rem;}
+
+/* ── Note panel ── */
+.note-dur{font-family:'DM Mono',monospace;font-size:.8rem;color:var(--warm);margin-bottom:.75rem;}
+.lbl{font-family:'DM Mono',monospace;font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.25rem;}
+.inp{font-family:'DM Mono',monospace;font-size:.82rem;background:var(--bg);border:1px solid var(--border);border-radius:3px;color:var(--text);padding:.5rem .75rem;width:100%;outline:none;-webkit-appearance:none;}
+.inp:focus{border-color:var(--accent2);}
+.inp::placeholder{color:var(--muted);opacity:.5;}
+.mt{margin-top:.65rem;}
+
+/* ── Divider & manual toggle ── */
+hr{border:none;border-top:1px solid var(--border);margin:1.1rem 0;}
+.toggle-btn{font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:.4rem;touch-action:manipulation;}
+.toggle-btn:active{color:var(--text);}
+.arr{transition:transform .2s;font-size:.5rem;}
+.toggle-btn.open .arr{transform:rotate(90deg);}
+.collapsible{display:none;padding-top:.9rem;border-top:1px solid var(--border);margin-top:.6rem;}
+.collapsible.open{display:block;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.6rem;}
+.full{grid-column:1/-1;}
+.err{font-family:'DM Mono',monospace;font-size:.65rem;color:var(--bad);margin-top:.3rem;display:none;}
+.hint-txt{font-family:'DM Mono',monospace;font-size:.6rem;color:var(--muted);line-height:1.5;margin-top:.5rem;}
+.btn-add{background:transparent;color:var(--accent);border:1px solid var(--accent2);font-family:'Fraunces',serif;font-weight:600;font-size:.85rem;padding:.6rem 1.1rem;border-radius:3px;cursor:pointer;touch-action:manipulation;}
+
+/* ── Tabs ── */
+.tabs{display:flex;border-bottom:1px solid var(--border);margin:1.4rem 0 1.1rem;}
+.tab{font-family:'DM Mono',monospace;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;padding:.5rem .9rem;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-1px;color:var(--muted);cursor:pointer;touch-action:manipulation;}
+.tab.on{color:var(--accent);border-bottom-color:var(--accent);}
+.panel{display:none;}
+.panel.on{display:block;}
+
+/* ── Stats ── */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:.6rem;margin-bottom:.9rem;}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:.75rem .9rem;}
+.stat-n{font-family:'DM Mono',monospace;font-size:1.2rem;color:var(--accent);margin-bottom:.15rem;}
+.stat-l{font-family:'DM Mono',monospace;font-size:.55rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;}
+.note{font-family:'DM Mono',monospace;font-size:.58rem;color:var(--muted);text-align:center;margin-bottom:.5rem;}
+
+/* ── Day blocks ── */
+.day-block{background:var(--surface);border:1px solid var(--border);border-radius:3px;margin-bottom:.6rem;overflow:hidden;}
+.day-head{display:flex;align-items:center;gap:.6rem;padding:.65rem .9rem;cursor:pointer;touch-action:manipulation;}
+.day-head:active{background:rgba(0,0,0,.02);}
+.day-block.open .day-head{border-bottom:1px solid var(--border);}
+.day-name{font-family:'Fraunces',serif;font-weight:600;font-size:.85rem;color:var(--accent);flex-shrink:0;}
+.day-meta{font-family:'DM Mono',monospace;font-size:.63rem;color:var(--muted);flex:1;display:flex;gap:.4rem;flex-wrap:wrap;}
+.pill{background:rgba(61,107,140,.1);color:var(--accent);padding:.08rem .35rem;border-radius:20px;font-size:.58rem;}
+.pill.n{background:rgba(90,80,128,.1);color:var(--night);}
+.chev{font-size:.5rem;color:var(--muted);transition:transform .2s;flex-shrink:0;}
+.day-block.open .chev{transform:rotate(90deg);}
+.day-body{display:none;}
+.day-block.open .day-body{display:block;}
+.day-sum{display:flex;gap:1rem;flex-wrap:wrap;padding:.5rem .9rem;background:rgba(0,0,0,.015);border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;font-size:.65rem;}
+.dsi .dv{color:var(--accent);}
+.dsi .dl{color:var(--muted);margin-left:.2rem;}
+.gap-row{display:flex;align-items:center;justify-content:space-between;padding:.35rem .9rem;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;font-size:.65rem;}
+.gap-row:last-child{border-bottom:none;}
+.gap-row.skip{opacity:.4;}
+.gt{color:var(--muted);display:flex;align-items:center;gap:.3rem;}
+.garr{color:var(--border2);}
+.gv{font-weight:500;}
+.gv.good{color:var(--good);}
+.gv.warn{color:var(--warm);}
+.gv.bad{color:var(--bad);}
+.gv.skip{color:var(--night);text-decoration:line-through;font-size:.58rem;}
+.gnl{color:var(--night);font-size:.56rem;margin-left:.2rem;}
+
+/* ── Log ── */
+.log-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem;}
+.log-title{font-family:'DM Mono',monospace;font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);}
+.btns-row{display:flex;gap:.35rem;}
+.sm-btn{font-family:'DM Mono',monospace;font-size:.58rem;background:transparent;border:1px solid transparent;border-radius:2px;padding:.2rem .5rem;cursor:pointer;letter-spacing:.04em;text-transform:uppercase;touch-action:manipulation;}
+.sm-btn.exp{color:var(--accent);opacity:.65;}
+.sm-btn.exp:active{opacity:1;border-color:var(--accent);}
+.sm-btn.clr{color:var(--bad);opacity:.65;}
+.sm-btn.clr:active{opacity:1;border-color:var(--bad);}
+.date-hd{font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:.5rem 0 .2rem;border-bottom:1px solid var(--border);margin-bottom:.05rem;}
+.vrow{display:grid;grid-template-columns:1.8rem 3.8rem 1fr auto .9rem;align-items:center;gap:.35rem;padding:.5rem .85rem;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;font-size:.71rem;cursor:pointer;touch-action:manipulation;}
+.vrow:last-child{border-bottom:none;}
+.vrow:active{background:rgba(61,107,140,.05);}
+.vrow.dim{opacity:.45;}
+.vn{color:var(--muted);font-size:.58rem;text-align:right;}
+.vt{color:var(--text);font-weight:500;}
+.vd{color:var(--warm);}
+.vd.x{color:var(--muted);font-style:italic;}
+.vi{font-size:.63rem;text-align:right;color:var(--muted);}
+.vi.good{color:var(--good);}
+.vi.warn{color:var(--warm);}
+.vi.bad{color:var(--bad);}
+.vi.night{color:var(--night);font-size:.57rem;}
+.varr{font-size:.55rem;color:var(--border2);text-align:right;}
+.mbadge{font-size:.5rem;font-family:'DM Mono',monospace;color:var(--accent2);border:1px solid var(--accent2);border-radius:2px;padding:.03rem .22rem;opacity:.7;vertical-align:middle;margin-left:.25rem;}
+.empty{padding:2rem .9rem;text-align:center;font-family:'DM Mono',monospace;font-size:.7rem;color:var(--muted);}
+
+/* ── Modal ── */
+.backdrop{display:none;position:fixed;inset:0;background:rgba(20,18,15,.45);z-index:100;align-items:flex-end;justify-content:center;}
+.backdrop.on{display:flex;}
+.sheet{background:var(--surface);width:100%;max-width:580px;border-radius:10px 10px 0 0;border-top:1px solid var(--border);padding:0 1.2rem calc(2rem + env(safe-area-inset-bottom,0px));}
+.sheet-handle{width:2.2rem;height:4px;background:var(--border2);border-radius:2px;margin:.85rem auto 1rem;}
+.sheet-title{font-family:'Fraunces',serif;font-weight:600;font-size:.95rem;color:var(--text);margin-bottom:.9rem;}
+.edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.7rem;}
+.edit-grid .full{grid-column:1/-1;}
+.mrow{display:flex;gap:.5rem;flex-wrap:wrap;padding-top:.4rem;}
+.mbtn{font-family:'Fraunces',serif;font-weight:600;font-size:.85rem;padding:.65rem 1rem;border-radius:3px;cursor:pointer;touch-action:manipulation;border:1px solid transparent;}
+.mbtn:active{opacity:.75;}
+.mbtn-save{background:var(--accent);color:#fff;flex:1;}
+.mbtn-del{background:transparent;color:var(--bad);border-color:var(--bad);}
+.mbtn-cancel{background:transparent;color:var(--muted);border-color:var(--border2);}
+.mbtn-yes{background:var(--bad);color:#fff;flex:1;}
+.mbtn-no{background:transparent;color:var(--muted);border-color:var(--border2);}
+.confirm{display:none;flex-direction:column;gap:.45rem;padding-top:.4rem;}
+.confirm.on{display:flex;}
+.conf-msg{font-family:'DM Mono',monospace;font-size:.7rem;color:var(--bad);}
+.conf-btns{display:flex;gap:.5rem;}
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="app-label">Bladder diary</p>
+
+<!-- ═══════════ MAIN CARD ═══════════ -->
+<div class="card" id="card">
+
+  <!-- STATE: idle -->
+  <div id="sIdle">
+    <div class="big" id="bigIdle">–</div>
+    <div class="sub" id="subIdle">Ready to log</div>
+    <div class="hint" id="hintEl"></div>
+    <div class="row">
+      <button class="btn btn-primary" id="btnLog">💧 Log visit now</button>
+    </div>
+  </div>
+
+  <!-- STATE: countdown -->
+  <div id="sCd" style="display:none">
+    <div class="big c-accent" id="bigCd">20</div>
+    <div class="sub">Countdown…</div>
+    <div class="cd-row">
+      <svg class="cd-svg" width="42" height="42" viewBox="0 0 42 42">
+        <circle class="cd-bg" cx="21" cy="21" r="18"/>
+        <circle class="cd-arc" cx="21" cy="21" r="18" id="cdArc"/>
+      </svg>
+      <span class="cd-txt" id="cdTxt">Timing starts in 20 seconds…</span>
+    </div>
+    <div class="row">
+      <button class="btn btn-ghost" id="btnCancelCd">✕ Cancel</button>
+      <button class="btn btn-ghost" id="btnSkipCd" style="color:var(--accent);border-color:var(--accent)">⏭ Skip</button>
+    </div>
+  </div>
+
+  <!-- STATE: ready (after countdown) -->
+  <div id="sReady" style="display:none">
+    <div class="big c-accent">✓</div>
+    <div class="sub">Ready — start when you are</div>
+    <div class="row" style="margin-top:.5rem">
+      <button class="btn btn-stop" id="btnStartTimer">▶ Start timing</button>
+      <button class="btn btn-ghost" id="btnCancelReady">✕ Cancel</button>
+    </div>
+  </div>
+
+  <!-- STATE: timing -->
+  <div id="sTiming" style="display:none">
+    <div class="big c-warm" id="bigTimer">0.0s</div>
+    <div class="sub">Timing…</div>
+    <div class="row">
+      <button class="btn btn-stop" id="btnStopTimer">■ Stop</button>
+    </div>
+  </div>
+
+  <!-- STATE: note (after stop) -->
+  <div id="sNote" style="display:none">
+    <div class="big" id="bigNote">–</div>
+    <div class="sub">Save visit</div>
+    <div class="note-dur" id="noteDur"></div>
+    <label class="lbl" for="noteInp">Note (optional)</label>
+    <input class="inp mt" id="noteInp" type="text" placeholder="e.g. felt urgency…">
+    <div class="row mt">
+      <button class="btn btn-primary" id="btnSave">Save visit</button>
+      <button class="btn btn-ghost"   id="btnDiscard">Discard</button>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- Manual entry -->
+  <button class="toggle-btn" id="togManual"><span class="arr">▶</span>Add entry manually</button>
+  <div class="collapsible" id="manualPanel">
+    <div class="form-grid">
+      <div><label class="lbl">Date</label><input class="inp" type="date" id="mDate"></div>
+      <div><label class="lbl">Time</label><input class="inp" type="time" id="mTime" step="1"></div>
+      <div class="full"><label class="lbl">Duration (optional)</label><input class="inp" type="text" id="mDur" placeholder="seconds or mm:ss"></div>
+      <div class="full"><label class="lbl">Note (optional)</label><input class="inp" type="text" id="mNote" placeholder="optional note"></div>
+    </div>
+    <button class="btn-add" id="btnManualAdd">+ Add</button>
+    <div class="err" id="mErr"></div>
+    <p class="hint-txt">Leave duration empty to log only the time.</p>
+  </div>
+
+</div><!-- /card -->
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab on"  data-p="overview">Overview</button>
+  <button class="tab"     data-p="days">By day</button>
+  <button class="tab"     data-p="log">Log</button>
+</div>
+
+<div class="panel on" id="p-overview">
+  <div class="stat-grid">
+    <div class="stat"><div class="stat-n" id="stN">0</div><div class="stat-l">Total visits</div></div>
+    <div class="stat"><div class="stat-n" id="stI">–</div><div class="stat-l">Avg interval (day)</div></div>
+    <div class="stat"><div class="stat-n" id="stD">–</div><div class="stat-l">Avg duration</div></div>
+    <div class="stat"><div class="stat-n" id="stL">–</div><div class="stat-l">Longest wait</div></div>
+  </div>
+  <p class="note">Intervals counted 06:00–23:00 only. Night gaps excluded.</p>
+</div>
+
+<div class="panel" id="p-days">
+  <p class="note">Intervals counted 06:00–23:00 only.</p>
+  <div id="daysCont"><div class="empty">No visits yet</div></div>
+</div>
+
+<div class="panel" id="p-log">
+  <div class="log-head">
+    <span class="log-title">All visits</span>
+    <div class="btns-row">
+      <button class="sm-btn exp" id="btnCSV">↓ CSV</button>
+      <button class="sm-btn clr" id="btnClearAll">Clear all</button>
+    </div>
+  </div>
+  <div id="logCont"><div class="empty" id="logEmpty">No visits yet</div></div>
+</div>
+
+</div><!-- /wrap -->
+
+<!-- Edit modal -->
+<div class="backdrop" id="backdrop">
+  <div class="sheet" id="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="sheetTitle">Edit visit</div>
+    <div class="edit-grid">
+      <div><label class="lbl">Date</label><input class="inp" type="date" id="eDate"></div>
+      <div><label class="lbl">Time</label><input class="inp" type="time" id="eTime" step="1"></div>
+      <div class="full"><label class="lbl">Duration (optional)</label><input class="inp" type="text" id="eDur" placeholder="seconds or mm:ss"></div>
+      <div class="full"><label class="lbl">Note</label><input class="inp" type="text" id="eNote" placeholder="optional note"></div>
+    </div>
+    <div class="mrow" id="mMain">
+      <button class="mbtn mbtn-save"   id="mSave">Save</button>
+      <button class="mbtn mbtn-del"    id="mDel">Delete</button>
+      <button class="mbtn mbtn-cancel" id="mCancel">Cancel</button>
+    </div>
+    <div class="confirm" id="mConfirm">
+      <span class="conf-msg">Delete this visit permanently?</span>
+      <div class="conf-btns">
+        <button class="mbtn mbtn-yes" id="mYes">Yes, delete</button>
+        <button class="mbtn mbtn-no"  id="mNo">No</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ══════════════════════════════════════════
+   DATA  — single source of truth
+══════════════════════════════════════════ */
+const STORE = 'bl3'; // new key — avoids any old corrupt data
+function load(){ try{ return JSON.parse(localStorage.getItem(STORE))||[]; }catch{ return []; } }
+function save(arr){ localStorage.setItem(STORE, JSON.stringify(arr)); }
+
+function insertEntry(entry){
+  const arr = load();
+  // insert so array stays sorted newest→oldest
+  let i = arr.findIndex(e => e.ts < entry.ts);
+  if(i === -1) i = arr.length;
+  arr.splice(i, 0, entry);
+  save(arr);
+  redraw();
+}
+
+function deleteEntry(ts){
+  const arr = load().filter(e => e.ts !== ts);
+  save(arr);
+  redraw();
+}
+
+function updateEntry(ts, patch){
+  const arr = load();
+  const i = arr.findIndex(e => e.ts === ts);
+  if(i === -1) return;
+  Object.assign(arr[i], patch);
+  save(arr);
+  redraw();
+}
+
+/* ══════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════ */
+const DAY0=6, DAY1=5; // 06:00 to 05:00 next day
+let CD_TOTAL=20; const CIRC = 2*Math.PI*18; // r=18 → ~113.1
+
+function pad(n){ return String(Math.floor(n)).padStart(2,'0'); }
+
+function fmtSecs(ms){
+  const s=ms/1000;
+  return s<60 ? s.toFixed(1)+'s' : pad(s/60)+':'+pad(s%60);
+}
+function fmtMin(ms){
+  const m=Math.floor(ms/60000), h=Math.floor(m/60), r=m%60;
+  return h>0 ? `${h}h ${pad(r)}m` : `${m} min`;
+}
+function grade(ms){
+  const m=ms/60000;
+  return m>=120?'good' : m>=60?'' : m>=30?'warn' : 'bad';
+}
+function dayTime(ts){ const h=new Date(ts).getHours(); return h>=DAY0||h<DAY1; } // 06:00–05:00
+function nightGap(t1,t2){
+  // Skip if the gap contains the night window 05:00–06:00
+  // We check every hour in the gap for hour==5 (05:xx)
+  const NIGHT_H = DAY1; // 5
+  const d1=new Date(t1), d2=new Date(t2);
+  // Walk hour by hour through the gap
+  let cur=new Date(d1);
+  cur.setMinutes(0,0,0);
+  cur.setHours(cur.getHours()+1); // start from next full hour
+  while(cur<=d2){
+    if(cur.getHours()===NIGHT_H) return true;
+    cur.setHours(cur.getHours()+1);
+  }
+  // Also check if t1 itself is in night window
+  if(d1.getHours()===NIGHT_H) return true;
+  return false;
+}
+function toDate(ts){ return new Date(ts).toLocaleDateString('sv-SE'); }
+function toTime(ts){ return new Date(ts).toTimeString().slice(0,8); }
+function longDate(s){
+  const d=new Date(s);
+  return isNaN(d)?s:d.toLocaleDateString('en-GB',{weekday:'long',month:'long',day:'numeric'});
+}
+function parseDur(raw){
+  if(!raw||!raw.trim()) return null;
+  raw=raw.trim();
+  const m=raw.match(/^(\d+):(\d{1,2})(?:\.(\d{1,2}))?$/);
+  if(m) return (parseInt(m[1])*60+parseInt(m[2]))*1000 + (m[3]?parseInt(m[3].padEnd(2,'0'))*10:0);
+  const s=parseFloat(raw.replace(',','.'));
+  return (!isNaN(s)&&s>=0) ? Math.round(s*1000) : undefined;
+}
+
+/* ══════════════════════════════════════════
+   STATE MACHINE  (idle|cd|timing|note)
+══════════════════════════════════════════ */
+let cdTimer=null, cdLeft=0;
+let rafId=null, tStart=null, elapsed=0;
+let pTs=null, pElapsed=null; // pending visit
+
+const card = document.getElementById('card');
+const sIdle   = document.getElementById('sIdle');
+const sCd     = document.getElementById('sCd');
+const sTiming = document.getElementById('sTiming');
+const sNote   = document.getElementById('sNote');
+
+function show(id){
+  [sIdle,sCd,document.getElementById('sReady'),sTiming,sNote].forEach(el=>el.style.display='none');
+  document.getElementById(id).style.display='';
+  card.classList.remove('bar-accent','bar-warm');
+  if(id==='sCd')     card.classList.add('bar-accent');
+  if(id==='sTiming') card.classList.add('bar-warm');
+}
+
+/* idle */
+function goIdle(){
+  if(cdTimer){ clearInterval(cdTimer); cdTimer=null; }
+  if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
+  pTs=null; pElapsed=null;
+  show('sIdle');
+  refreshHint();
+}
+
+/* countdown */
+function startCd(){
+  CD_TOTAL = Math.floor(Math.random()*16)+5; // random 5–20
+  cdLeft=CD_TOTAL;
+  show('sCd');
+  renderCd();
+  cdTimer=setInterval(()=>{
+    cdLeft--;
+    renderCd();
+    if(cdLeft<=0){ clearInterval(cdTimer); cdTimer=null; showReady(); }
+  },1000);
+}
+function renderCd(){
+  document.getElementById('bigCd').textContent=cdLeft;
+  document.getElementById('cdArc').style.strokeDashoffset=CIRC*(1-cdLeft/CD_TOTAL);
+  document.getElementById('cdTxt').textContent=cdLeft===1?'Timing starts in 1 second…':`Timing starts in ${cdLeft} seconds…`;
+}
+
+/* timing */
+function showReady(){
+  show('sReady');
+}
+function startTimer(){
+  tStart=Date.now(); elapsed=0;
+  show('sTiming');
+  function tick(){
+    elapsed=Date.now()-tStart;
+    document.getElementById('bigTimer').textContent=fmtSecs(elapsed);
+    rafId=requestAnimationFrame(tick);
+  }
+  rafId=requestAnimationFrame(tick);
+}
+function stopTimer(){
+  cancelAnimationFrame(rafId); rafId=null;
+  pTs=tStart;
+  pElapsed=elapsed;
+  document.getElementById('bigNote').textContent=fmtSecs(elapsed);
+  document.getElementById('noteDur').textContent='Duration: '+fmtSecs(elapsed);
+  document.getElementById('noteInp').value='';
+  show('sNote');
+}
+
+/* save */
+function saveVisit(){
+  const note=document.getElementById('noteInp').value.trim();
+  insertEntry({ ts:pTs, date:toDate(pTs), time:toTime(pTs), durMs:pElapsed||null, manual:false, note });
+  goIdle();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function discardVisit(){ goIdle(); }
+
+/* ══════════════════════════════════════════
+   HINT — since last + vs avg
+══════════════════════════════════════════ */
+let hintTimer=null;
+function refreshHint(){
+  const el=document.getElementById('hintEl');
+  const arr=load().filter(e=>e.ts>946684800000);
+  if(!arr.length){ el.innerHTML=''; return; }
+  const last=arr.find(e=>dayTime(e.ts));
+  if(!last){ el.innerHTML=''; return; }
+  const since=Date.now()-last.ts;
+  const m=Math.floor(since/60000), h=Math.floor(m/60), r=m%60;
+  const tStr=h>0?`${h}h ${r}m`:`${m} min`;
+  const g=grade(since);
+  const col=g==='good'?'var(--good)':g==='warn'?'var(--warm)':g==='bad'?'var(--bad)':'var(--text)';
+
+  // avg daytime gaps
+  const sorted=[...arr].sort((a,b)=>a.ts-b.ts);
+  const gaps=[];
+  for(let i=1;i<sorted.length;i++)
+    if(!nightGap(sorted[i-1].ts,sorted[i].ts)) gaps.push(sorted[i].ts-sorted[i-1].ts);
+
+  let diffHtml='';
+  if(gaps.length>=2){
+    const avg=gaps.reduce((a,b)=>a+b,0)/gaps.length;
+    const diff=since-avg;
+    const dm=Math.round(Math.abs(diff)/60000), dh=Math.floor(dm/60), dr=dm%60;
+    const ds=dh>0?`${dh}h ${dr}m`:`${dm} min`;
+    if(diff>=0) diffHtml=`<span class="hint-sub" style="color:var(--good)">+${ds} above average</span>`;
+    else diffHtml=`<span class="hint-sub" style="color:${dm>30?'var(--bad)':'var(--warm)'}">−${ds} below average</span>`;
+  }
+  el.innerHTML=`Since last visit: <strong style="color:${col}">${tStr}</strong>${diffHtml}`;
+}
+
+/* ══════════════════════════════════════════
+   RENDER
+══════════════════════════════════════════ */
+function redraw(){
+  const arr=load();
+  drawStats(arr);
+  drawDays(arr);
+  drawLog(arr);
+  refreshHint();
+}
+
+function drawStats(arr){
+  const r=arr.filter(e=>e.ts>946684800000);
+  document.getElementById('stN').textContent=r.length;
+  const wd=r.filter(e=>e.durMs);
+  document.getElementById('stD').textContent=wd.length?fmtSecs(wd.reduce((a,e)=>a+e.durMs,0)/wd.length):'–';
+  const s=[...r].sort((a,b)=>a.ts-b.ts), g=[];
+  for(let i=1;i<s.length;i++) if(!nightGap(s[i-1].ts,s[i].ts)) g.push(s[i].ts-s[i-1].ts);
+  if(g.length){ document.getElementById('stI').textContent=fmtMin(g.reduce((a,b)=>a+b)/g.length); document.getElementById('stL').textContent=fmtMin(Math.max(...g)); }
+  else{ document.getElementById('stI').textContent='–'; document.getElementById('stL').textContent='–'; }
+}
+
+function drawDays(arr){
+  const cont=document.getElementById('daysCont');
+  const valid=arr.filter(e=>e.ts>946684800000);
+  if(!valid.length){ cont.innerHTML='<div class="empty">No visits yet</div>'; return; }
+  const bd={};
+  valid.forEach(e=>{ (bd[e.date]=bd[e.date]||[]).push(e); });
+  cont.innerHTML='';
+  Object.keys(bd).sort((a,b)=>b.localeCompare(a)).forEach(date=>{
+    const ents=[...bd[date]].sort((a,b)=>a.ts-b.ts);
+    const day=ents.filter(e=>dayTime(e.ts));
+    const gaps=[];
+    for(let i=1;i<ents.length;i++){
+      const sk=nightGap(ents[i-1].ts,ents[i].ts);
+      gaps.push({f:ents[i-1].time.slice(0,5),t:ents[i].time.slice(0,5),ms:ents[i].ts-ents[i-1].ts,sk});
+    }
+    const vg=gaps.filter(g=>!g.sk);
+    const avg=vg.length?vg.reduce((a,g)=>a+g.ms,0)/vg.length:null;
+
+    const blk=document.createElement('div'); blk.className='day-block';
+    const hd=document.createElement('div'); hd.className='day-head';
+    let meta=`<span class="pill">${ents.length} visit${ents.length!==1?'s':''}</span>`;
+    if(ents.length!==day.length) meta+=`<span class="pill n">${ents.length-day.length} night</span>`;
+    if(avg) meta+=`<span>avg ${fmtMin(avg)}</span>`;
+    hd.innerHTML=`<span class="day-name">${longDate(date)}</span><span class="day-meta">${meta}</span><span class="chev">▶</span>`;
+    hd.onclick=()=>blk.classList.toggle('open');
+    blk.appendChild(hd);
+
+    const body=document.createElement('div'); body.className='day-body';
+    if(day.length){
+      const wd=day.filter(e=>e.durMs), ad=wd.length?wd.reduce((a,e)=>a+e.durMs,0)/wd.length:null;
+      const sum=document.createElement('div'); sum.className='day-sum';
+      sum.innerHTML=`<span class="dsi"><span class="dv">${day.length}</span><span class="dl">daytime</span></span>`
+        +(avg?`<span class="dsi"><span class="dv">${fmtMin(avg)}</span><span class="dl">avg</span></span>`:'')
+        +(vg.length?`<span class="dsi"><span class="dv">${fmtMin(Math.max(...vg.map(g=>g.ms)))}</span><span class="dl">longest</span></span>`:'')
+        +(ad?`<span class="dsi"><span class="dv">${fmtSecs(ad)}</span><span class="dl">avg dur</span></span>`:'');
+      body.appendChild(sum);
+    }
+    if(!gaps.length){
+      const e=document.createElement('div'); e.className='empty'; e.style.padding='.6rem .9rem'; e.textContent='Only one visit – no interval.'; body.appendChild(e);
+    } else {
+      gaps.forEach(g=>{
+        const row=document.createElement('div'); row.className='gap-row'+(g.sk?' skip':'');
+        const cls=g.sk?'skip':grade(g.ms);
+        row.innerHTML=`<span class="gt"><span>${g.f}</span><span class="garr">→</span><span>${g.t}</span>${g.sk?'<span class="gnl">night</span>':''}</span><span class="gv ${cls}">${fmtMin(g.ms)}</span>`;
+        body.appendChild(row);
+      });
+    }
+    blk.appendChild(body); cont.appendChild(blk);
+  });
+}
+
+function drawLog(arr){
+  const cont=document.getElementById('logCont');
+  const valid=arr.filter(e=>e.ts>946684800000);
+  if(!valid.length){
+    cont.innerHTML='<div class="empty" id="logEmpty">No visits yet</div>';
+    return;
+  }
+  cont.innerHTML=''; // clear including any empty placeholder
+  const bd={};
+  valid.forEach(e=>{ (bd[e.date]=bd[e.date]||[]).push(e); });
+  cont.innerHTML='';
+  Object.keys(bd).sort((a,b)=>b.localeCompare(a)).forEach(date=>{
+    const dh=document.createElement('div'); dh.className='date-hd'; dh.textContent=longDate(date);
+    cont.appendChild(dh);
+    const asc=[...bd[date]].sort((a,b)=>a.ts-b.ts);
+    [...bd[date]].sort((a,b)=>b.ts-a.ts).forEach(e=>{
+      const ci=asc.findIndex(x=>x.ts===e.ts);
+      const prev=asc[ci-1];
+      const row=document.createElement('div');
+      row.className='vrow'+(!dayTime(e.ts)?' dim':'');
+
+      const vn=document.createElement('span'); vn.className='vn'; vn.textContent=ci+1;
+      const vt=document.createElement('span'); vt.className='vt'; vt.textContent=e.time.slice(0,5)+(e.note?' 📝':'');
+      const vd=document.createElement('span'); vd.className='vd'+(e.durMs?'':' x'); vd.textContent=e.durMs?fmtSecs(e.durMs):'–';
+      if(e.manual){ const b=document.createElement('span'); b.className='mbadge'; b.textContent='manual'; vd.appendChild(b); }
+      const vi=document.createElement('span');
+      if(prev){ const gms=e.ts-prev.ts, sk=nightGap(prev.ts,e.ts); vi.className='vi'+(sk?' night':' '+grade(gms)); vi.textContent=sk?'🌙':'+'+fmtMin(gms); }
+      else vi.className='vi';
+      const va=document.createElement('span'); va.className='varr'; va.textContent='›';
+
+      [vn,vt,vd,vi,va].forEach(el=>row.appendChild(el));
+      row.addEventListener('click',()=>openModal(e.ts));
+      cont.appendChild(row);
+    });
+  });
+}
+
+/* ══════════════════════════════════════════
+   MODAL  — purely DOM-based event listeners
+══════════════════════════════════════════ */
+let editTs=null;
+
+function openModal(ts){
+  const e=load().find(x=>x.ts===ts);
+  if(!e) return;
+  editTs=ts;
+  document.getElementById('sheetTitle').textContent=`Visit — ${e.date} ${e.time.slice(0,5)}`;
+  document.getElementById('eDate').value=e.date;
+  document.getElementById('eTime').value=e.time.slice(0,5);
+  document.getElementById('eDur').value=e.durMs!=null?(e.durMs/1000).toFixed(1):'';
+  document.getElementById('eNote').value=e.note||'';
+  document.getElementById('mMain').style.display='';
+  document.getElementById('mConfirm').classList.remove('on');
+  document.getElementById('backdrop').classList.add('on');
+}
+
+function closeModal(){
+  document.getElementById('backdrop').classList.remove('on');
+  document.getElementById('mConfirm').classList.remove('on');
+  document.getElementById('mMain').style.display='';
+  editTs=null;
+}
+
+// backdrop click → close
+document.getElementById('backdrop').addEventListener('click', closeModal);
+// sheet click → do NOT bubble to backdrop
+document.getElementById('sheet').addEventListener('click', e=>e.stopPropagation());
+
+document.getElementById('mCancel').addEventListener('click', closeModal);
+
+document.getElementById('mDel').addEventListener('click', ()=>{
+  document.getElementById('mMain').style.display='none';
+  document.getElementById('mConfirm').classList.add('on');
+});
+
+document.getElementById('mNo').addEventListener('click', ()=>{
+  document.getElementById('mConfirm').classList.remove('on');
+  document.getElementById('mMain').style.display='';
+});
+
+document.getElementById('mYes').addEventListener('click', ()=>{
+  const ts=editTs; // capture BEFORE closeModal resets editTs
+  closeModal();
+  deleteEntry(ts); // deleteEntry calls redraw()
+});
+
+document.getElementById('mSave').addEventListener('click', ()=>{
+  const ts=editTs; // capture before anything resets it
+  const dv=document.getElementById('eDate').value.trim();
+  const tv=document.getElementById('eTime').value.trim();
+  if(!dv||!tv) return;
+  const dur=parseDur(document.getElementById('eDur').value);
+  if(dur===undefined) return;
+  const dt=new Date(`${dv}T${tv}`);
+  if(isNaN(dt)) return;
+  const patch={ date:dv, time:tv.length===5?tv+':00':tv, ts:dt.getTime(), durMs:dur, note:document.getElementById('eNote').value.trim() };
+  closeModal();
+  updateEntry(ts, patch); // updateEntry calls redraw()
+});
+
+/* ══════════════════════════════════════════
+   MANUAL ENTRY
+══════════════════════════════════════════ */
+document.getElementById('togManual').addEventListener('click', function(){
+  const open=document.getElementById('manualPanel').classList.toggle('open');
+  this.classList.toggle('open',open);
+  if(open){
+    document.getElementById('mDate').value=toDate(Date.now());
+    document.getElementById('mTime').value=toTime(Date.now()).slice(0,5);
+  }
+});
+
+document.getElementById('btnManualAdd').addEventListener('click', ()=>{
+  const err=document.getElementById('mErr'); err.style.display='none';
+  const dv=document.getElementById('mDate').value.trim();
+  const tv=document.getElementById('mTime').value.trim();
+  if(!dv||!tv){ err.textContent='Date and time required.'; err.style.display=''; return; }
+  const dur=parseDur(document.getElementById('mDur').value);
+  if(dur===undefined){ err.textContent='Invalid duration format.'; err.style.display=''; return; }
+  const dt=new Date(`${dv}T${tv}`);
+  if(isNaN(dt)){ err.textContent='Invalid date/time.'; err.style.display=''; return; }
+  const entry={ ts:dt.getTime(), date:dv, time:tv.length===5?tv+':00':tv, durMs:dur, manual:true, note:document.getElementById('mNote').value.trim() };
+  // reset form
+  ['mDur','mNote'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('manualPanel').classList.remove('open');
+  document.getElementById('togManual').classList.remove('open');
+  insertEntry(entry); // calls redraw()
+  goIdle();
+  // Switch to Log tab so user sees the new entry
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+  document.querySelector('[data-p="log"]').classList.add('on');
+  document.getElementById('p-log').classList.add('on');
+  window.scrollTo({top:0,behavior:'smooth'});
+});
+
+/* ══════════════════════════════════════════
+   TABS
+══════════════════════════════════════════ */
+document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('p-'+btn.dataset.p).classList.add('on');
+}));
+
+/* ══════════════════════════════════════════
+   EXPORT
+══════════════════════════════════════════ */
+document.getElementById('btnCSV').addEventListener('click', ()=>{
+  const arr=load().filter(e=>e.ts>946684800000).sort((a,b)=>a.ts-b.ts);
+  if(!arr.length) return;
+  const rows=[['Date','Time','Duration(sec)','Interval(min)','Daytime','Manual','Note']];
+  arr.forEach((e,i)=>{
+    const dur=e.durMs!=null?(e.durMs/1000).toFixed(1):'';
+    let intv=''; if(i>0&&!nightGap(arr[i-1].ts,e.ts)) intv=((e.ts-arr[i-1].ts)/60000).toFixed(1);
+    rows.push([e.date,e.time,dur,intv,dayTime(e.ts)?'Yes':'No',e.manual?'Yes':'No',e.note||'']);
+  });
+  const csv=rows.map(r=>r.map(c=>{ const s=String(c); return (s.includes(',')||s.includes('"'))?`"${s.replace(/"/g,'""')}"`:`${s}`; }).join(',')).join('\r\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv'})); a.download=`bladderlog_${toDate(Date.now())}.csv`; a.click();
+});
+
+document.getElementById('btnClearAll').addEventListener('click', ()=>{
+  const btn = document.getElementById('btnClearAll');
+  if(btn.dataset.confirm !== '1'){
+    btn.dataset.confirm = '1';
+    btn.textContent = 'Sure? Tap again';
+    btn.style.opacity = '1';
+    btn.style.borderColor = 'var(--bad)';
+    setTimeout(()=>{
+      btn.dataset.confirm = '';
+      btn.textContent = 'Clear all';
+      btn.style.opacity = '';
+      btn.style.borderColor = '';
+    }, 3000);
+  } else {
+    btn.dataset.confirm = '';
+    btn.textContent = 'Clear all';
+    btn.style.opacity = '';
+    btn.style.borderColor = '';
+    localStorage.removeItem(STORE);
+    redraw();
+  }
+});
+
+/* ══════════════════════════════════════════
+   BUTTON WIRES
+══════════════════════════════════════════ */
+document.getElementById('btnLog').addEventListener('click',      startCd);
+document.getElementById('btnCancelCd').addEventListener('click', goIdle);
+document.getElementById('btnStartTimer').addEventListener('click', startTimer);
+document.getElementById('btnCancelReady').addEventListener('click', goIdle);
+document.getElementById('btnSkipCd').addEventListener('click', ()=>{ clearInterval(cdTimer); cdTimer=null; showReady(); });
+document.getElementById('btnStopTimer').addEventListener('click',stopTimer);
+document.getElementById('btnSave').addEventListener('click',     saveVisit);
+document.getElementById('btnDiscard').addEventListener('click',  discardVisit);
+
+/* ══════════════════════════════════════════
+   INIT
+══════════════════════════════════════════ */
+goIdle();
+redraw();
+hintTimer=setInterval(refreshHint, 30000);
+</script>
+</body>
+</html>
